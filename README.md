@@ -28,7 +28,7 @@ Every architectural decision maps to a principle from the 5-Pillar IT Engineerin
 
 ![Network Topology](diagrams/network-topology.png)
 
-> *Full topology: 5 VMs across 4 isolated KVM subnets. Editable source: [`diagrams/network-topology.excalidraw`](diagrams/network-topology.excalidraw)*
+> *Full topology: 5 VMs across 4 isolated KVM subnets. Editable source: [`diagrams/network-topology`](diagrams/network-topology)*
 
 The lab simulates a standard 3-tier production network with a dedicated management plane. Four isolated subnets enforce security boundaries at the network level — not the application level.
 
