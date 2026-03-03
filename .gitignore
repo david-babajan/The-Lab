@@ -1,0 +1,6 @@
+*.iso
+*.qcow2
+.vagrant/
+*.retry
+__pycache__/
+.env
