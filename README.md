@@ -18,7 +18,7 @@
 
 This repository documents the end-to-end design and build of a production-grade infrastructure for a fictional German IT consulting firm. It is not a tutorial walkthrough. It is a working, deployable system built from first principles — version-controlled, documented, and explainable at every layer.
 
-Every architectural decision maps to a principle from the 5-Pillar IT Engineering framework. Every sprint produces a tangible deliverable committed to this repository. By the end, this infrastructure runs a secure client portal with network segmentation, hardware authentication, full observability, Ansible automation, and a locally hosted AI model — all on a single ThinkPad.
+Every architectural decision maps to a numbered principle from the [Engineering Principles Framework](docs/engineering-principles.pdf). Every sprint produces a tangible deliverable committed to this repository. By the end, this infrastructure runs a secure client portal with network segmentation, hardware authentication, full observability, Ansible automation, and a locally hosted AI model — all on a single ThinkPad.
 
 > **"The lab IS the interview."**
 
@@ -28,9 +28,7 @@ Every architectural decision maps to a principle from the 5-Pillar IT Engineerin
 
 ![Network Topology](diagrams/network-topology.png)
 
-> *Full topology: 5 VMs across 4 isolated KVM subnets. Editable source: [`diagrams/network-topology`](diagrams/network-topology)*
-
-The lab simulates a standard 3-tier production network with a dedicated management plane. Four isolated subnets enforce security boundaries at the network level — not the application level.
+The lab simulates a standard 3-tier production network with a dedicated management plane. Four isolated KVM subnets enforce security boundaries at the network level — not the application level.
 
 | VM | Hostname | IP | Subnet | Role |
 |:---|:---|:---|:---|:---|
@@ -41,71 +39,75 @@ The lab simulates a standard 3-tier production network with a dedicated manageme
 | VM5 | `tc-monitor` | `10.0.1.20` | Management | Prometheus · Grafana |
 
 ```
-CLIENT
-  │
-  │  HTTPS :443
-  ▼
-┌─────────────────────────────────────────────────────────────┐
-│  DMZ  10.0.2.0/24                                           │
-│  tc-proxy  10.0.2.10   [Nginx — TLS termination]            │
-└──────────────────────────┬──────────────────────────────────┘
-                           │  HTTP :8080
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│  APPLICATION  10.0.3.0/24                                   │
-│  tc-app  10.0.3.10   [Flask · Docker · Ollama :11434]        │
-└──────────────────────────┬──────────────────────────────────┘
-                           │  PostgreSQL :5432
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│  DATABASE  10.0.4.0/24                                      │
-│  tc-db  10.0.4.10   [PostgreSQL 16 — app-only access]        │
-└─────────────────────────────────────────────────────────────┘
+CLIENT  ──HTTPS:443──►  tc-proxy (DMZ)
+                             │
+                        HTTP:8080
+                             │
+                             ▼
+                        tc-app (Application)
+                             │
+                       PostgreSQL:5432
+                             │
+                             ▼
+                        tc-db (Database)
 
-FEDORA HOST → Yubikey SSH :22 → tc-bastion → all VMs via ProxyJump
-tc-monitor  → node_exporter :9100 → all 5 VMs (Prometheus scrape)
+Fedora Host ──SSH+Yubikey──► tc-bastion ──ProxyJump──► all VMs
+tc-monitor  ──metrics:9100──► all 5 VMs
 ```
 
 ---
 
-## Design Principles
+## Engineering Principles Applied
 
-Every decision in this lab has a business justification, not just a technical one. The architecture is built against the 5-Pillar IT Engineering framework.
+All design decisions reference the [Engineering Principles Framework](docs/engineering-principles.pdf) — a set of 60 agnostic infrastructure principles organized across 5 pillars.
 
-| Principle | Implementation |
+| Principle | Implementation in this lab |
 |:---|:---|
-| **#12 — Default-Deny Networking** | UFW on every VM. Only documented, explicitly required ports are open. |
-| **#14 — Addressing is Architecture** | Subnets planned before any VM was created. IP scheme documented in Git first. |
-| **#18 — Least Privilege Always** | No sudo for VM management. No root SSH. libvirt group handles hypervisor ops. |
-| **#21 — Segment Everything** | 4 isolated subnets. A compromised web server cannot directly reach the database. |
-| **#22 — Defence-in-Depth** | Identity (Yubikey) + network segmentation + OS hardening + encrypted transport. |
-| **#27 — If You Can't See It, You Can't Secure It** | Prometheus scrapes all 5 VMs. Grafana dashboards expose real-time metrics. |
+| **#12 — Default-Deny Networking** | UFW on every VM. Only explicitly documented ports are open. |
+| **#14 — Addressing is Architecture** | Subnets and IPs designed and documented before any VM was created. |
+| **#18 — Least Privilege Always** | No sudo for VM management. No root SSH. libvirt group for hypervisor ops. |
+| **#21 — Segment Everything** | 4 isolated subnets. A compromised web server cannot reach the database. |
+| **#22 — Defence-in-Depth** | Yubikey + network segmentation + OS hardening + TLS. Multiple layers. |
+| **#27 — If You Can't See It, You Can't Secure It** | Prometheus scrapes all 5 VMs. Grafana provides real-time visibility. |
 | **#32 — Infrastructure is Code** | Everything in Git. Ansible rebuilds the full lab from scratch in under 30 minutes. |
 
 ---
 
-## Sprint Breakdown
+## Sprints
 
-### ✅ Sprint 0 — Git + Network Architecture
-**`12 hours`** &nbsp;|&nbsp; **Completed**
+| # | Sprint | Hours | Status |
+|:---:|:---|:---:|:---:|
+| 0 | Git + Network Architecture | 12 | `COMPLETED` |
+| 1 | Linux + KVM Virtualization | 16 | `IN PROGRESS` |
+| 2 | Docker Fundamentals | 15 | `NOT STARTED` |
+| 3 | Network Segmentation + Firewalls | 15 | `NOT STARTED` |
+| 4 | Full Lab: TechConsult Portal | 22 | `NOT STARTED` |
+| 5 | Yubikey Hardware Authentication | 8 | `NOT STARTED` |
+| 6 | Ansible Automation | 12 | `NOT STARTED` |
+| 7 | AI Infrastructure + Final Docs | 15 | `NOT STARTED` |
+| | **Total** | **115** | **8–10 weeks** |
 
-Established version control and designed the full network topology before touching a single VM. The architecture diagram, subnet plan, and IP assignments were committed to Git first. This is how production infrastructure is built.
+---
+
+## Sprint 0 — Git + Network Architecture
+`12 hours` · `COMPLETED`
+
+Established version control and designed the full network topology before touching a single VM. The architecture diagram, subnet plan, and IP assignments were committed to Git first — this is how production infrastructure is built.
 
 **Deliverables**
 - Public GitHub repository with clean, descriptive commit history
 - [`docs/network-plan.md`](docs/network-plan.md) — subnet design, VM inventory, traffic flows
-- [`diagrams/network-topology.excalidraw`](diagrams/network-topology.excalidraw) — editable source
-- [`diagrams/network-topology.png`](diagrams/network-topology.png) — rendered export
+- [`diagrams/network-topology.png`](diagrams/network-topology.png) — architecture diagram
 - Project directory structure for all future sprints
 
-*Bible Principles applied: #6 Know the OS Beyond the GUI · #10 Follow the Packet · #14 Addressing is Architecture*
+*Engineering Principles: #6 Know the OS · #10 Follow the Packet · #14 Addressing is Architecture*
 
 ---
 
-### 🔄 Sprint 1 — Linux Server Administration + KVM Virtualization
-**`16 hours`** &nbsp;|&nbsp; **In Progress**
+## Sprint 1 — Linux Server Administration + KVM Virtualization
+`16 hours` · `IN PROGRESS`
 
-Built the first VM from the command line, established SSH key-based access, hardened the server before deploying any services, and produced a professional deployment report with real system metrics.
+Building the first VM from the command line, establishing SSH key-based access, hardening the server before deploying any services, and producing a professional deployment report with real system metrics.
 
 **Deliverables**
 - `practice-vm` — Ubuntu Server 24.04 LTS, headless, SSH-only
@@ -113,12 +115,12 @@ Built the first VM from the command line, established SSH key-based access, hard
 - UFW default-deny firewall with documented ruleset
 - [`sprint-1-server-report.md`](sprint-1-server-report.md) — real metrics, before/after hardening comparison
 
-*Bible Principles applied: #6 · #7 Know What Healthy Looks Like · #8 Design for Failure · #9 Repeatable Configs · #23 Reduce Attack Surface*
+*Engineering Principles: #6 · #7 Know What Healthy Looks Like · #8 Design for Failure · #9 Repeatable Configs · #23 Reduce Attack Surface*
 
 ---
 
-### ⬜ Sprint 2 — Docker Fundamentals
-**`15 hours`**
+## Sprint 2 — Docker Fundamentals
+`15 hours` · `NOT STARTED`
 
 Builds the TechConsult Flask portal application, containerizes it, and wires it to PostgreSQL using Docker Compose. This compose file becomes the prototype deployed to production VMs in Sprint 4.
 
@@ -127,12 +129,12 @@ Builds the TechConsult Flask portal application, containerizes it, and wires it 
 - Working `docker-compose.yml` (Flask + PostgreSQL)
 - Documentation of container networking model and lifecycle
 
-*Bible Principles applied: #9 · #32 Infrastructure is Code · #37 Prefer Managed Services When Understood*
+*Engineering Principles: #9 · #32 Infrastructure is Code · #37 Prefer Managed Services When Understood*
 
 ---
 
-### ⬜ Sprint 3 — Network Segmentation + Firewalls
-**`15 hours`**
+## Sprint 3 — Network Segmentation + Firewalls
+`15 hours` · `NOT STARTED`
 
 Creates the four isolated KVM networks, assigns static IPs via netplan, and implements role-specific UFW rulesets. Proves segmentation actually works — blocked paths are tested and confirmed blocked.
 
@@ -142,63 +144,63 @@ Creates the four isolated KVM networks, assigns static IPs via netplan, and impl
 - Connectivity test report proving segmentation is enforced
 - SSH ProxyJump bastion configuration
 
-*Bible Principles applied: #10 · #11 Debug in Layers · #12 · #13 Tools Give Visibility · #21*
+*Engineering Principles: #10 · #11 Debug in Layers · #12 · #13 Tools Give Visibility · #21*
 
 ---
 
-### ⬜ Sprint 4 — Full Lab Deployment: TechConsult Portal
-**`22 hours`**
+## Sprint 4 — Full Lab Deployment: TechConsult Portal
+`22 hours` · `NOT STARTED`
 
-Deploys all five VMs simultaneously and connects the full application stack. Nginx terminates TLS and proxies to Flask. Flask queries PostgreSQL. Prometheus scrapes everything. The lab becomes a live, working system.
+Deploys all five VMs simultaneously and connects the full application stack end-to-end. Nginx terminates TLS and proxies to Flask. Flask queries PostgreSQL. Prometheus scrapes everything.
 
 **Deliverables**
 - End-to-end HTTPS portal accessible through Nginx reverse proxy
 - PostgreSQL backend storing real application data
 - Prometheus + Grafana monitoring dashboards with live metrics from all 5 VMs
 
-*Bible Principles applied: #1 Business Over Tech Puzzles · #3 Think in Systems · #7 · #15 Assume Breach · #21 · #27*
+*Engineering Principles: #1 Business Over Puzzles · #3 Think in Systems · #7 · #15 Assume Breach · #21 · #27*
 
 ---
 
-### ⬜ Sprint 5 — Yubikey Hardware Authentication
-**`8 hours`**
+## Sprint 5 — Yubikey Hardware Authentication
+`8 hours` · `NOT STARTED`
 
-Adds physical hardware as an authentication factor. SSH to the bastion host requires a Yubikey touch — a software credential alone is no longer sufficient. Documents the complete security architecture and trust boundaries.
+Adds physical hardware as an authentication factor. SSH to the bastion host requires a Yubikey touch — a software credential alone is no longer sufficient.
 
 **Deliverables**
 - FIDO2 ed25519-sk SSH key pair bound to Yubikey 5C NFC
 - Hardware-gated bastion access (physical touch required)
 - Security architecture documentation with trust boundary diagrams
 
-*Bible Principles applied: #15 · #17 Never Trust Always Verify · #18 · #22 · #24 Identity is the Perimeter*
+*Engineering Principles: #15 · #17 Never Trust Always Verify · #18 · #22 · #24 Identity is the Perimeter*
 
 ---
 
-### ⬜ Sprint 6 — Ansible Automation
-**`12 hours`**
+## Sprint 6 — Ansible Automation
+`12 hours` · `NOT STARTED`
 
-Converts every manual configuration step into idempotent Ansible playbooks. A single `site.yml` rebuilds the entire lab from bare VMs. This is the proof of Principle 9: configurations must be repeatable.
+Converts every manual configuration step into idempotent Ansible playbooks. A single `site.yml` rebuilds the entire lab from bare VMs — proof that all configurations are repeatable.
 
 **Deliverables**
 - Full Ansible inventory + role-based playbooks + `group_vars`
-- Master `site.yml` that orchestrates complete lab rebuild
+- Master `site.yml` orchestrating complete lab rebuild
 - Documented full rebuild from bare VMs in under 30 minutes
 
-*Bible Principles applied: #9 · #30 The Rule of Two · #31 Standardise Before Automating · #32 · #33 Automation Must Be Safe*
+*Engineering Principles: #9 · #30 The Rule of Two · #31 Standardise Before Automating · #32 · #33 Automation Must Be Safe*
 
 ---
 
-### ⬜ Sprint 7 — AI Infrastructure + Final Documentation
-**`15 hours`**
+## Sprint 7 — AI Infrastructure + Final Documentation
+`15 hours` · `NOT STARTED`
 
-Deploys Mistral Nemo 12B — an EU-developed model — via Ollama on the app server. Adds AI deployment to Ansible automation. Produces the final portfolio-ready documentation.
+Deploys Mistral Nemo 12B via Ollama on the app server — an EU-developed model for GDPR-compliant local AI inference. Adds AI deployment to Ansible automation. Produces final portfolio documentation.
 
 **Deliverables**
 - Local AI inference endpoint (Ollama + Mistral Nemo 12B)
 - Ansible-automated AI service deployment integrated into `site.yml`
-- Portfolio-ready README, final architecture diagram, Grafana screenshots
+- Portfolio-ready documentation, final architecture diagram, Grafana screenshots
 
-*Bible Principles applied: #1 · #32 · #37 · #49 One Evolving Project · #51 Communication is Engineering · #52 The Documentation Trinity*
+*Engineering Principles: #1 · #32 · #37 · #49 One Evolving Project · #51 Communication is Engineering · #52 Documentation Trinity*
 
 ---
 
@@ -218,76 +220,54 @@ Deploys Mistral Nemo 12B — an EU-developed model — via Ollama on the app ser
 | **Security** | UFW · ed25519 SSH keys · Yubikey 5C NFC (FIDO2) |
 | **AI Runtime** | Ollama · Mistral Nemo 12B |
 | **Version Control** | Git · GitHub CLI (`gh`) |
-| **Diagramming** | Excalidraw |
 
 ---
 
 ## Repository Structure
 
 ```
-lab/
+The-Lab/
 ├── diagrams/
-│   ├── network-topology.excalidraw   # Editable source
-│   └── network-topology.png          # README embed
+│   └── network-topology.png        # Architecture diagram
 ├── docs/
-│   ├── network-plan.md               # Subnet design + VM inventory
-│   └── security-architecture.md     # Trust boundaries (Sprint 5)
+│   ├── engineering-principles.pdf  # Engineering Principles Framework
+│   └── network-plan.md             # Subnet design and VM inventory
 ├── ansible/
-│   ├── inventory/                    # Host definitions
-│   ├── playbooks/                    # Role-specific playbooks
-│   └── group_vars/                   # Per-role variables
+│   ├── inventory/
+│   ├── playbooks/
+│   └── group_vars/
 ├── docker/
-│   ├── Dockerfile                    # TechConsult Flask portal
-│   └── docker-compose.yml            # Flask + PostgreSQL
-├── scripts/                          # Utility scripts
-├── sprint-1-server-report.md         # Sprint 1 deliverable
-└── README.md
+├── scripts/
+└── sprint-1-server-report.md       # Added each sprint
 ```
-
----
-
-## Hour Summary
-
-| Sprint | Focus | Hours | Status |
-|:---|:---|:---:|:---|
-| Sprint 0 | Git + Network Architecture | 12 | ✅ Completed |
-| Sprint 1 | Linux + KVM Virtualization | 16 | 🔄 In Progress |
-| Sprint 2 | Docker Fundamentals | 15 | ⬜ |
-| Sprint 3 | Network Segmentation + Firewalls | 15 | ⬜ |
-| Sprint 4 | Full Lab: TechConsult Portal | 22 | ⬜ |
-| Sprint 5 | Yubikey Hardware Authentication | 8 | ⬜ |
-| Sprint 6 | Ansible Automation | 12 | ⬜ |
-| Sprint 7 | AI Infrastructure + Final Docs | 15 | ⬜ |
-| **Total** | | **115** | **8–10 weeks at 2–3h/day** |
 
 ---
 
 ## Post-Bootcamp Path
 
 ```
-NOW       →  CCNA 200-301
-              Lab covers ~60–65% of exam content.
-              Remaining 35%: Cisco IOS syntax via Packet Tracer.
-                   │
-                   ▼
-PHASE 1   →  Junior Infrastructure Engineer
-              International companies / MSPs in Germany
-              Bechtle · Computacenter · NTT Data · T-Systems · Capgemini
-                   │
-                   ▼
-PHASE 2   →  CCNP + 2 years experience
-              Gulf markets — Dubai · Abu Dhabi
-                   │
-                   ▼
-PHASE 3   →  AWS / Azure + CKA
-              USA · AI Infrastructure / Platform Engineering
+NOW      →  CCNA 200-301
+             Lab covers ~60-65% of exam content already.
+             │
+             ▼
+PHASE 1  →  Junior Infrastructure Engineer
+             International companies / MSPs in Germany
+             Bechtle · Computacenter · NTT Data · T-Systems
+             │
+             ▼
+PHASE 2  →  CCNP + 2 years experience
+             Gulf markets — Dubai · Abu Dhabi
+             │
+             ▼
+PHASE 3  →  AWS / Azure + CKA
+             USA · AI Infrastructure / Platform Engineering
 ```
 
 ---
 
 <div align="center">
 
-*Built on the 5-Pillar IT Engineering framework.*
+*Built on the Engineering Principles Framework.*
 *Tools change. Principles don't.*
 
 </div>
